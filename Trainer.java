@@ -1,3 +1,4 @@
+import java.io.Serializable;
 import java.util.ArrayList;
 /**
  * The trainer class that holds the trainer's name, their speeches,
@@ -5,12 +6,13 @@ import java.util.ArrayList;
  * @author Crystal Chun		ID#012680952
  *
  */
-public abstract class Trainer extends Entity 
+public abstract class Trainer extends Entity implements Serializable
 {
 	/**The list of pokemon the trainer has*/
 	private ArrayList <Pokemon> pokemon = new ArrayList <Pokemon> (); 
 	/**The index of the trainer's current pokemon*/
 	private int currentPokemon;
+
 	
 	/**
 	 * The trainer constructor
@@ -32,8 +34,6 @@ public abstract class Trainer extends Entity
 	public abstract int chooseStyle();
 	/**The attack move specific to the style chosen*/
 	public abstract int chooseMove(int style);
-	/**The intro speeches specific to each trainer type*/
-	public abstract void introSpeech();
 
 	/**
 	 * Displays the trainer's current pokemon with all the stats.
@@ -141,6 +141,10 @@ public abstract class Trainer extends Entity
 	 */
 	public int getNextCurPokemon()
 	{
+		if(currentPokemon + 1 >= pokemon.size())
+		{
+			return currentPokemon;
+		}
 		return currentPokemon + 1;
 	}
 	
@@ -153,7 +157,7 @@ public abstract class Trainer extends Entity
 	{
 		int style = chooseStyle();
 		int move = chooseMove(style);
-		 int damage = getCurrentPokemon().fight(style, move);
+		int damage = getCurrentPokemon().fight(style, move);
 		return damage;
 	}
 	
@@ -176,8 +180,30 @@ public abstract class Trainer extends Entity
 		return currentPokemon;
 	}
 	
+	/**
+	 * Gets the pokemon at the specified index.
+	 * @param index The index of the pokemon
+	 * @return The pokemon at the index
+	 */
 	public Pokemon getThisPoke(int index)
 	{
 		return pokemon.get(index);
+	}
+	
+	/**
+	 * Gets how many pokemon have fainted (hp <= 0)
+	 * @return How many pokemon have fainted
+	 */
+	public int getFainted()
+	{
+		int fainted = 0;
+		for(Pokemon poke: pokemon)
+		{
+			if(poke.getHP() <= 0)
+			{
+				fainted ++;
+			}
+		}
+		return fainted;
 	}
 }

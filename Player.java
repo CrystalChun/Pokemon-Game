@@ -1,10 +1,13 @@
+import java.awt.Point;
+import java.io.Serializable;
+
 /**
  * Player class that creates a player that holds the player's
  * potions, pokeballs, and money.
  * @author Crystal Chun		ID#012680952
  *
  */
-public class Player extends Trainer
+public class Player extends Trainer implements Serializable
 {
 	/**The potions that the player has*/
 	private int potions;
@@ -12,33 +15,42 @@ public class Player extends Trainer
 	private int pokeballs;
 	/**The amount of money that the player has*/
 	private int money;
+	/**Where the user starts out on the map*/
+	private Point location;
+	/**The map level the user is on*/
+	private int level;
 
 	/**
 	 * Constructs the player with a set amount potions, pokeballs, and money.
 	 * @param name The name of the player
 	 * @param hp The hp of the player
 	 */
-	public Player(String name, int hp) 
+	public Player(String name, int hp, Point start) 
 	{
 		super(name, hp);
 		potions = 5;
 		pokeballs = 5;
 		setMoney(200);
+		location = start;
+		level = 1;
 	}
 	
 	/**
 	 * Uses up one potion
+	 * @return Whether the user was able to use a potion or not
 	 */
-	public void usePotion()
+	public boolean usePotion()
 	{
 		//Tests if the player even has any potions to use up
 		if(potions <= 0)
 		{
 			System.out.println("You're out of potions.");
+			return false;
 		}
 		else
 		{
 			potions --;
+			return true;
 		}
 		
 	}
@@ -77,10 +89,19 @@ public class Player extends Trainer
 	
 	/**
 	 * Uses up a pokeball by subtracting one from the player's total pokeball
+	 * @return True or false depending on if the user was able to use a pokeball
 	 */
-	public void usePokeball()
+	public boolean usePokeball()
 	{
-		pokeballs --;
+		if(pokeballs <= 0)
+		{
+			return false;
+		}
+		else
+		{
+			pokeballs --;
+			return true;
+		}
 	}
 	
 	/**
@@ -205,7 +226,7 @@ public class Player extends Trainer
 	 * @return The style chosen, basic = 1, special = 2
 	 */
 	@Override
-	public int chooseStyle() //Between basic or special?? 
+	public int chooseStyle()
 	{
 		System.out.println("Choose an attack type:"
 				+ "\r\n 1. Basic"
@@ -238,31 +259,6 @@ public class Player extends Trainer
 	}
 
 	/**
-	 * This is where the player introduces themselves before a battle.
-	 */
-	@Override
-	public void introSpeech() 
-	{
-		int speech = (int) (Math.random() * 6) + 1;
-		switch(speech)
-		{
-			case 1:		System.out.println(super.getName() + ": \"Get ready to get your socks knocked off!\"");
-						break;
-			case 2:		System.out.println(super.getName() + ": \"I've been waiting for a challenge!\"");
-						break;
-			case 3:		System.out.println(super.getName() + ": \"Let's do this " + getCurrentPokemon().getName() + "!\"");
-						break;
-			case 4:		System.out.println(super.getName() + ": \"Alright, here we go " + getCurrentPokemon().getName() + "!\"");
-						break;
-			case 5:		System.out.println(super.getName() + ": \"Time to show them what we got!\"");
-						break;
-			case 6:		System.out.println(super.getName() + ": \"Bring it!\"");
-						break;
-		}	
-		
-	}
-
-	/**
 	 * Gets the amount of money the player currently has.
 	 * @return The amount of money the player currently has
 	 */
@@ -271,10 +267,16 @@ public class Player extends Trainer
 		return money;
 	}
 
+	/**
+	 * Gets the pokemon at the specified index
+	 * @param index The index of the pokemon wanted
+	 * @return The pokemon at the index
+	 */
 	public Pokemon getThisPoke(int index)
 	{
 		return super.getThisPoke(index);
 	}
+	
 	/**
 	 * Sets the amount of money for the player.
 	 * @param money The amount of money the player will have
@@ -284,4 +286,148 @@ public class Player extends Trainer
 		this.money = money;
 	}
 
+	/**
+	 * Gets where the user is in the map.
+	 * @return The point where the user is in the map.
+	 */
+	public Point getLocation()
+	{
+		return location;
+	}
+	
+	/**
+	 * Gets which map level the user is on.
+	 * @return The map area/level the user is on.
+	 */
+	public int getLevel()
+	{
+		return level;
+	}
+
+	/**
+	 * Increases the user's map level.
+	 */
+	public void incLevel()
+	{
+		level = level + 1;
+	}
+
+	/**
+	 * Sets the user's location
+	 * @param p The point where the user's location will be
+	 * @return Whether setting the location worked
+	 */
+	public boolean setLocation(Point p)
+	{
+		if(p.getX() < 5 && p.getX() >= 0 && p.getY() < 5 && p.getY() >= 0)
+		{
+			this.location.setLocation(p);
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+	}
+	
+	/**
+	 * Simulates the user going North in the map.
+	 * If moving North is valid, then sets user's
+	 * location to North, reveals that location,
+	 * and returns the character at that location.
+	 * @param m The map the user is on
+	 * @return The character North or a 
+	 * 'G' if the location isn't valid.
+	 */
+	public char goNorth(Map m)
+	{
+		int newX = (int) location.getX() - 1;
+		
+		Point temp = new Point();
+		temp.setLocation(newX, location.getY());
+		
+		//If the location is valid, sets user's location, reveals it, and returns character
+		if(m.getCharAtLoc(temp) != 'G')
+		{
+			this.location.setLocation(newX, location.getY());
+			m.reveal(location);
+			return m.getCharAtLoc(location);
+		}
+		return 'G';
+	}
+	
+	/**
+	 * Tests if moving South is valid, if it is then sets
+	 * the user's location to South, reveals that location,
+	 * and returns the character at that location. Otherwise
+	 * returns 'G' which means it's not valid.
+	 * @param m The map the user is on.
+	 * @return The character South or a 'G' if invalid.
+	 */
+	public char goSouth(Map m)
+	{
+		int newX = (int)location.getX() + 1;
+		
+		Point temp = new Point();
+		temp.setLocation(newX, location.getY());
+		
+		//If the location is valid, sets user's location, reveals it, and returns character
+		if(m.getCharAtLoc(temp) != 'G')
+		{
+			location.setLocation(newX, location.getY());
+			m.reveal(location);
+			return m.getCharAtLoc(location);
+		}
+		return 'G';
+	}
+	
+	/**
+	 * Tests if moving East is valid, if it is then sets
+	 * the user's location to East, reveals that location, 
+	 * and returns the character at that location. Otherwise
+	 * returns 'G', which means invalid.
+	 * @param m The map the user is on.
+	 * @return The character East or a 'G' if invalid.
+	 */
+	public char goEast(Map m)
+	{
+		int newY = (int)location.getY() + 1;
+		
+		Point temp = new Point();
+		temp.setLocation(location.getX(), newY);
+		
+		//If the location is valid, sets user's location, reveals it, and returns character
+		if(m.getCharAtLoc(temp) != 'G')
+		{
+			location.setLocation(location.getX(), newY);
+			m.reveal(location);
+			return m.getCharAtLoc(location);
+		}
+		return 'G';
+	}
+	
+	/**
+	 * Tests if moving West is valid, if it is then sets
+	 * the user's location to West, reveals that location,
+	 * and returns the character at that location. Otherwise
+	 * returns 'G', which means invalid.
+	 * @param m The map the user is on.
+	 * @return The character West or a 'G' if invalid.
+	 */
+	public char goWest(Map m)
+	{
+		int newY = (int)location.getY() - 1;
+		
+		Point temp = new Point();
+		temp.setLocation(location.getX(), newY);
+		
+		//If the location is valid, sets user's location, reveals it, and returns character
+		if(m.getCharAtLoc(temp) != 'G')
+		{
+			location.setLocation(location.getX(), newY);
+			m.reveal(location);
+			return m.getCharAtLoc(location);
+		}
+		return 'G';
+	}
 }

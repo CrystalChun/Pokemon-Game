@@ -1,3 +1,5 @@
+import java.io.Serializable;
+
 /**
  * An abstract pokemon class with which various
  * pokemons can be made from. This class extends the
@@ -7,7 +9,7 @@
  * @author Crystal Chun		ID# 012680952
  *
  */
-public abstract class Pokemon extends Entity
+public abstract class Pokemon extends Entity implements Serializable
 {
 	/**The pokemon's level, stored as an integer*/
 	private int level;
@@ -17,6 +19,8 @@ public abstract class Pokemon extends Entity
 	private int nextLevelExp;
 	/**Holds whether or not the pokemon is angry*/
 	private boolean anger;
+	/**How many nothings the pokemon has run into*/
+	private int nothings;
 	
 	/**
 	 * Constructs the pokemon by calling entity's constructor and passing in a string
@@ -39,6 +43,7 @@ public abstract class Pokemon extends Entity
 		exp = 0;
 		nextLevelExp = level * 4;
 		this.level = level;
+		this.nothings = 0;
 	}
 	
 	/**
@@ -362,5 +367,29 @@ public abstract class Pokemon extends Entity
 	public void setAnger(boolean anger)
 	{
 		this.anger = anger;
+	}
+	
+	/**
+	 * Increases the number of nothings the user runs into
+	 * on the main map and then tests if the number of nothings 
+	 * is greater than or equal to 3. Sets anger to true if it is.
+	 */
+	public void incNothing()
+	{
+		this.nothings ++;
+		
+		//If the run into 3 or more nothings poke gets angry
+		if(nothings >= 3)
+		{
+			this.anger = true;
+		}
+	}
+	
+	/**
+	 * Resets the number of nothings to 0
+	 */
+	public void resetNothing()
+	{
+		this.nothings = 0;
 	}
 }

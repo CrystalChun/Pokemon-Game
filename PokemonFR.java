@@ -1,16 +1,55 @@
+import java.awt.Point;
 import java.util.Scanner;
+import java.io.*;
 /**
  * This is the implementation of a pokemon game where the user is able to play the game.
  * @author Crystal Chun ID # 012680952
- *
  */
 public class PokemonFR 
 {
 	public static void main(String[] args) 
 	{
-		//Creating the player with a starter pokemon
-		Player player = intro();
+		//Checks for saved file
+		Player player = null;
+		File saved = new File("pokemon.dat");
+		boolean loaded = false;
+		if(saved.exists())
+		{
+			//If there is, asks if user wants to restart or continue from saved
+			System.out.println("Would you like to continue where you left off?"
+					+ "\r\n1. Yes"
+					+ "\r\n2. No start new game");
+			
+			int choice = CheckInput.intInput(1,2);
+			if(choice == 1)	//Continued from save
+			{
+				loaded = true;
+				try
+				{
+					ObjectInputStream in = new ObjectInputStream(new FileInputStream(saved));
+					player = (Player) in.readObject();
+					in.close();
+				}
+				catch(IOException e)
+				{
+					System.out.println("Error processing file.");
+				}
+				catch(ClassNotFoundException e)
+				{
+					System.out.println("Could not find class.");
+				}
+			}
+		}
+		//Creating the player with a starter pokemon if game not loaded
+		if(!loaded)
+		{
+			player = intro();
+		}
 		boolean playing = true;
+		boolean lost = false;
+		
+		Map map = new Map();
+		map.generateArea(player.getLevel());
 		
 		//Loop that repeats while the user is still playing the game.
 		while(playing)
@@ -26,11 +65,92 @@ public class PokemonFR
 							}
 							else
 							{
+								boolean moving = false;
+								char encounter = ' ';
+								while(!moving)
+								{
+									map.displayMap(player.getLocation());
+									System.out.println("Which way would you like to travel?"
+											+ "\r\n 1. North"
+											+ "\r\n 2. South"
+											+ "\r\n 3. East"
+											+ "\r\n 4. West");
+									int way = CheckInput.intInput(1, 4);
+									//Point temp = null;
+									switch(way)
+									{
+										case 1:		//North
+													if(player.goNorth(map) != 'G')
+													{
+														moving = true;
+														encounter = map.getCharAtLoc(player.getLocation());
+														//player.setLocation(temp);
+													}
+													break;
+										case 2:		//South
+													if(player.goSouth(map) != 'G')
+													{
+														moving = true;
+														encounter = map.getCharAtLoc(player.getLocation());
+														//player.setLocation(temp);
+													}
+													break;
+										case 3:		//East
+													if(player.goEast(map) != 'G')
+													{
+														moving = true;
+														encounter = map.getCharAtLoc(player.getLocation());
+														//player.setLocation(temp);
+													}
+													break;
+										case 4:		//West
+													if(player.goWest(map) != 'G')
+													{
+														moving = true;
+														encounter = map.getCharAtLoc(player.getLocation());
+														//player.setLocation(temp);
+													}
+													break;
+									}
+								}
+								Point playerCurrentLoc = player.getLocation();
 								System.out.println("You travel along your way ᕕ( ᐛ )ᕗ");
 								
-								//Chooses a random encounter and then calls the encounter method
-								int encounter = (int) (Math.random() * 9);
-								encounters(encounter, player);
+								//If the player reaches a new area/map
+								boolean newArea = encounters(encounter, player, map);
+								if(newArea)
+								{
+									System.out.println("Would you like to save your game progress?"
+											+ "\r\n 1. Yes"
+											+ "\r\n 2. No");
+									
+									//User wants to save game progress
+									int input = CheckInput.intInput(1, 2);
+									if(input == 1)
+									{
+										try
+										{
+											ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(saved));
+											out.writeObject(player);
+											System.out.println("Saving game . . .");
+											out.close();
+										}
+										catch(IOException e)
+										{
+											System.out.println("Error processing file.");
+										}
+									}
+									
+									//Generates the next map and increases player level
+									player.incLevel();
+									map.generateArea(player.getLevel());
+								}
+								
+								//Means that the player ran in a random direction away
+								if(!(player.getLocation().equals(playerCurrentLoc)))
+								{
+									encounters(encounter, player, map);
+								}
 							}
 							break;
 							
@@ -63,15 +183,40 @@ public class PokemonFR
 							
 				case 5:		//Exits the game
 							playing = false;
-							System.out.println("You leave the world of pokemon behind...");
 							break;
 			}
 			
+			//Means the player lost all their hp and has lost the game
 			if(player.getHP() <= 0)
 			{
 				System.out.println("You've lost all hp! Game over.");
+				lost = true;
 				playing = false;
 			}
+		}
+		
+		//The player didn't lose their hp, writes game to file (saves)
+		if(!lost)
+		{
+			try
+			{
+				ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(saved));
+				out.writeObject(player);
+				System.out.println("Saving game . . .");
+				System.out.println("You leave the world of pokemon behind...");
+				out.close();
+			}
+			catch(IOException e)
+			{
+				System.out.println("Error processing file.");
+			}
+		}
+		
+		if(player.getCurrentPokemon().getAnger())
+		{
+			System.out.println("Your pokemon is angry at you for running into too many nothings.\r\n"
+					+ player.getCurrentPokemon().getName() + " hurts you for it. You lose 2 hp!");
+			player.loseHP(2);
 		}
 	}
 
@@ -87,7 +232,13 @@ public class PokemonFR
 		Scanner in = new Scanner(System.in);
 		String trainerName = in.nextLine();
 		System.out.println();
-		Player player = new Player(trainerName, 100);
+
+		Map m = new Map();
+		m.generateArea(1);
+		Point temp = new Point();
+		temp.setLocation(m.findStartLocation().getX(), m.findStartLocation().getY());
+		Player player = new Player(trainerName, 100, temp);
+
 		
 		//Choosing the starter pokemon
 		System.out.print("Hello " + trainerName + "! Welcome to the world of Pokemon."
@@ -146,11 +297,12 @@ public class PokemonFR
 	 * @param situation The specific situation the user runs into (randomly generated)
 	 * @param player The player 
 	 */
-	public static void encounters(int situation, Player player)
+	public static boolean encounters(char situation, Player player, Map m)
 	{
+		boolean newPlace = false;
 		switch(situation)
 		{
-			case 0: 	//Wild Pokemon
+			case 'w': 	//Wild Pokemon
 						System.out.println("^\\^\\/ ᕕ( ᐛ )ᕗ ^\\^\\/ ᕕ( ᐛ )ᕗ ^\\^\\/");
 						System.out.println();
 						System.out.println("              (⊙ヮ⊙)");
@@ -158,12 +310,147 @@ public class PokemonFR
 						
 						//Creates wild pokemon
 						Pokemon wildPoke = PokemonMaker.makeWildPokemon();
+						String initialName = wildPoke.getName();
+						wildPoke.setName("Wild " + wildPoke.getName());
 						System.out.println("A WILD " + wildPoke.getName() + " APPEARS!");
 						
-						//Calls wild battle method
-						PokemonBattles.wildPokeBattle(player, wildPoke);
+						boolean fighting = true;
+						int playerHp = player.getHP();
+						
+						while(fighting)
+						{
+							//Displays both pokemons for the fight
+							player.displayCurrentPokemon(wildPoke);
+							
+							//Menu which asks the user what they would like to do
+							System.out.println("What would you like to do?"
+									+ "\r\n  1. Fight"
+									+ "\r\n  2. Use Pokeball"
+									+ "\r\n  3. Use Potion"
+									+ "\r\n  4. Run");
+							int choice = CheckInput.intInput(1, 4);
+							//Indicates that the user wants to fight
+							if(choice == 1)
+							{
+								fighting = PokemonBattles.wildPokeBattle(player, wildPoke);
+							}
+							else if(choice == 2)
+							{
+								if(player.usePokeball())
+								{
+									//Calculates the chance the user will capture pokemon lower hp = higher chance
+									double chance = (wildPoke.getMaxHP() - wildPoke.getHP())/wildPoke.getMaxHP();
+									//Generates two random numbers from 0 to 10 and if they match, then they caught pokemon
+									int capture = (int)(Math.random() * 11); 
+									int caught = (int)(Math.random() * 11);
+									
+									//The lower the hp of the pokemon, the higher chance user has of catching it
+									//--changes random number range
+									if(chance > 0.50)
+									{
+										capture = (int)(Math.random() * 5);
+										caught = (int)(Math.random() * 5);
+										if(chance > 0.25) //Hp of pokemon is less than 1/4 of what it was originally
+										{
+											capture = (int)(Math.random() * 2);
+											caught = (int)(Math.random() * 2);
+										}
+									}
+									//The user was able to catch the pokemon
+									if(capture == caught)
+									{
+										System.out.println("You caught " + wildPoke.getName() + "!");
+										System.out.println("Would you like to name " + wildPoke.getName() + "?"
+												+ "\r\n 1. Yes"
+												+ "\r\n 2. No");
+										
+										//Sets name of pokemon if user decides to change it
+										if(CheckInput.intInput(1, 2) == 1)	
+										{
+											System.out.println("What name would you like to give " + wildPoke.getName() + "?");
+											String name = CheckInput.getString();
+											wildPoke.setName(name);
+										}
+										else
+										{
+											wildPoke.setName(initialName);
+										}
+										player.addPokemon(wildPoke);
+										fighting = false;
+									}
+									else
+									{
+										System.out.println(wildPoke.getName() + " has broken free and is angry!");
+										wildPoke.setAnger(true);
+									}
+								}
+								else
+								{
+									System.out.println("You are out of pokeballs.");
+								}	
+							}
+							else if(choice == 3)
+							{
+								if(player.usePotion())
+								{
+									System.out.println("You used a potion on " + player.getCurrentPokemon().getName() 
+											+ "! " + player.getCurrentPokemon() + " gained 20 hp!");
+									player.getCurrentPokemon().gainHP(20);
+								}
+							}
+							else
+							{
+								System.out.println("You try to frolic away through the trees, but not before "
+										+ wildPoke.getName() + " deals 10 damage to you!");
+								System.out.println("     ε=ε=ε=ε=ε=ε=٩(  ͡๏̯͡๏)۶");
+								player.loseHP(10);
+								
+								//Sends player off in random direction
+								boolean switching = true;
+								while(switching)
+								{
+									int direction = (int) (Math.random() * 4);
+									switch(direction)
+									{
+										case 0:		if(player.goEast(m) != 'G')
+													{
+														player.goEast(m);
+														switching = false;
+													}
+													break;
+										case 1:		if(player.goWest(m) != 'G')
+													{
+														player.goWest(m);
+														switching = false;
+													}
+													break;
+										case 2:		if(player.goNorth(m) != 'G')
+													{
+														player.goNorth(m);
+														switching = false;
+													}
+													break;
+										case 3:		if(player.goSouth(m) != 'G')
+													{
+														player.goSouth(m);
+														switching = false;
+													}
+													break;
+									}
+								}
+								fighting = false;
+							}
+						}
+						
+						//Tests if player lost hp, if not, then defeated poke and removes them from map
+						if(player.getHP() == playerHp)
+						{
+							m.removeOppAtLoc(player.getLocation());
+						}
+						player.getCurrentPokemon().resetNothing();
 						break;
-			case 1: 	//Stumble upon town
+
+			case 'c': 	//Stumble upon town
 						System.out.print("^\\^\\/ ᕕ( ᐛ )ᕗ ^\\^\\/ ᕕ( ᐛ )ᕗ ^\\^\\/");
 						System.out.println("^^ - - -ᕕ( ᐛ )ᕗ /\\- - - ᕕ( ᐛ )ᕗ /\\ - - -");
 						System.out.println();
@@ -205,31 +492,114 @@ public class PokemonFR
 								+ "as you run through their gates and off into the sunset.");
 						System.out.println("( ͡° ͜ʖ ( ͡° ͜ʖ ( ͡° ͜ʖ ( ͡° ͜ʖ ͡°) ͜ʖ ͡°)ʖ ͡°)ʖ ͡°)                   ~|| ┏( ゜)ਊ゜)┛||");
 						System.out.println();
+						
+						player.getCurrentPokemon().resetNothing();
 						break;
-			case 2: 	//Opponent wants to battle you
-						Opponent opponent = OpponentMaker.makeRandOpponent();
-						PokemonBattles.opponentBattle(player, opponent);
+			case 'o': 	//Opponent wants to battle you
+						OpponentMaker makeNewOpp = new OpponentMaker();
+						Opponent opponent = makeNewOpp.makeRandOpponent();
+
+						opponent.getAttackSpeech(); //The opponent's call to the player
+
+						int playerHP = player.getHP();
+						System.out.println(opponent.getName() + " sends out " + opponent.getCurrentPokemon().getName() + "!");
+						System.out.println("You send out " + player.getCurrentPokemon().getName() + "!");
+	
+						boolean fight = true;
+						while(fight)
+						{
+							player.displayCurrentPokemon(opponent.getCurrentPokemon());
+							System.out.println("What would you like to do?"
+									+ "\r\n 1. Fight"
+									+ "\r\n 2. Run away");
+							
+							int battling = CheckInput.intInput(1, 2);
+							switch(battling)
+							{
+								case 1:		//The player wants to fight
+											fight = PokemonBattles.opponentBattle(player, opponent);
+											break;
+											
+								case 2:		//Player wants to run away
+											if(opponent.getAnger())	//The opponent is angry and deals more damage as you leave
+											{
+												fight = false;
+												System.out.println(opponent.getName() + " is angry, and does 30 damage to you as you sprint away.");
+												System.out.println("     ε=ε=ε=ε=ε=ε=٩(  ͡๏̯͡๏)۶");
+												player.loseHP(30);
+											}
+											else	//You're able to run away, but you lose 15 hp
+											{
+												fight = false;
+												System.out.println(opponent.getName() + " looks at you in confusion as you sprint away.");
+												System.out.println("     ε=ε=ε=ε=ε=ε=٩(  ͡๏̯͡๏)۶");
+												System.out.println("You lost 15 hp for leaving battle.");
+												player.loseHP(15);
+											}
+											
+											//Sends player off in random direction
+											boolean switching = true;
+											while(switching)
+											{
+												int direction = (int) (Math.random() * 4);
+												switch(direction)
+												{
+													case 0:		if(player.goEast(m) != 'G')
+																{
+																	player.goEast(m);
+																	switching = false;
+																}
+																break;
+													case 1:		if(player.goWest(m) != 'G')
+																{
+																	player.goWest(m);
+																	switching = false;
+																}
+																break;
+													case 2:		if(player.goNorth(m) != 'G')
+																{
+																	player.goNorth(m);
+																	switching = false;
+																}
+																break;
+													case 3:		if(player.goSouth(m) != 'G')
+																{
+																	player.goSouth(m);
+																	switching = false;
+																}
+																break;
+												}
+											}
+							}
+						}
+						
+						//Tests if the player lost hp, if they didn't then they defeated opponent
+						if(player.getHP() == playerHP)
+						{
+							m.removeOppAtLoc(player.getLocation());
+						}
+						
+						player.getCurrentPokemon().resetNothing();
 						break;
-			case 3:		//Mom runs up to you and gives you pair of running shoes which does nothing but you put them on anyways
-						System.out.println("(ﾉ^ヮ^)ﾉ*:・ﾟ✧ MOM: \"Oh honey, hold on!\" ~Runs up to you~"
-								+ "\r\n \"I have a pair of shoes for you to help you on your journey!\""
-								+ "\r\n ~received running shoes!~");
-						System.out.println("You put on the running shoes, but nothing happens!");
-						break;
-			case 4: 	//Run into brock
-						System.out.println("Brock approaches you from the bushes, and heals your soul."
-								+ "\r\nYou gained 10 hp.");
-						player.gainHP(10);
-						break;
-			case 5:		//Nothing happens
+			case 'n':	//Nothing happens
 						System.out.println("^\\^\\/ ᕕ( ᐛ )ᕗ ^\\^\\/ ᕕ( ᐛ )ᕗ ^\\^\\/"
 								+ "\r\n--Nothing happens--");
+						
+						player.getCurrentPokemon().incNothing();
 						break;
-			case 6:		System.out.println("MISTY: \"Hey twerp! Where's my bike?!?!\""
-						+ "\r\n *She hits you on the head and you lose 15 hp*");
-						player.loseHP(15);
+			case 'f':	//Reached finish and move onto the next map
+						System.out.println("You've made it into a new area!");
+						newPlace = true;
+						
+						player.getCurrentPokemon().resetNothing();
 						break;
-			case 7:		//Wild Angry Pokemon
+			case 's':	//Back at start
+						System.out.println("You've wandered right back from where you came from.");
+						
+						player.getCurrentPokemon().resetNothing();
+						break;
+	
+/*			case 7:		//Wild Angry Pokemon
 						System.out.println("^\\^\\/ ᕕ( ᐛ )ᕗ ^\\^\\/ ᕕ( ᐛ )ᕗ ^\\^\\/");
 						System.out.println();
 						System.out.println("              (⊙ヮ⊙)");
@@ -238,19 +608,18 @@ public class PokemonFR
 						//Creates wild pokemon
 						Pokemon wildPokeAnger = PokemonMaker.makeWildPokemon();
 						wildPokeAnger.setAnger(true);
-						System.out.println("A WILD " + wildPokeAnger.getName() + " APPEARS!"
-								+ "\r\nIt huffs and puffs at you as you come near.");
-						
-						//Calls wild battle method
-						PokemonBattles.wildPokeBattle(player, wildPokeAnger);
+						System.out.println("A WILD ANGRY " + wildPokeAnger.getName() + " APPEARS!"
+								+ "\r\nIt huffs and puffs at you as you come near and deals damage to you!");
+						player.loseHp(wildPokeAnger.battle());
 						break;
 			case 8:		//Angry opponent wants to battle you
 						Opponent angerOpponent = OpponentMaker.makeRandOpponent();
 						angerOpponent.setAnger(true);
+						System.out.println(angerOpponent.getName() + " is having a bad day today...");
 						PokemonBattles.opponentBattle(player, angerOpponent);
-						break;
-			
+						break;*/
 		}
+		return newPlace;
 	}
 	
 	/**

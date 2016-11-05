@@ -1,10 +1,12 @@
+import java.io.Serializable;
+
 /**
  * The entity class that stores its
  * max hp, hp, and name.
  * @author Crystal Chun		ID#012680952
  *
  */
-public abstract class Entity 
+public abstract class Entity implements Serializable
 {
 	/**The entity's name*/
 	private String name;
